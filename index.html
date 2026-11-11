@@ -415,7 +415,22 @@ const del=(sheet,id)=>({action:'delete',sheet,id});
 const setting=(k,v)=>({action:'setting',k,v});
 
 /* ---------- network ---------- */
-function jsonp(params,timeout=30000){
+// 구글 계정이 여러 개 로그인된 브라우저에서도 동작하도록 쿠키 없이(credentials:'omit') 요청
+async function jsonp(params,timeout=30000){
+  const q=new URLSearchParams(Object.assign({},params,{key:cfg.key,_:Date.now()}));
+  const url=cfg.url+(cfg.url.includes('?')?'&':'?')+q.toString();
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),timeout);
+  try{
+    const r=await fetch(url,{credentials:'omit',redirect:'follow',signal:ac.signal});
+    const txt=await r.text();
+    try{return JSON.parse(txt);}catch(e){throw new Error('응답 형식 오류');}
+  }catch(e){
+    if(e.name==='AbortError')throw new Error('응답 시간 초과');
+    if(!navigator.onLine)throw new Error('오프라인');
+    return jsonpTag(params,timeout);
+  }finally{clearTimeout(t);}
+}
+function jsonpTag(params,timeout=30000){
   return new Promise((res,rej)=>{
     const cb='cb_'+uid().replace(/\W/g,'');
     const s=document.createElement('script');
@@ -432,11 +447,11 @@ async function postOps(ops){
   const body=JSON.stringify({key:cfg.key,ops});
   let j=null;
   try{
-    const r=await fetch(cfg.url,{method:'POST',body,headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow'});
+    const r=await fetch(cfg.url,{method:'POST',body,credentials:'omit',headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow'});
     j=await r.json();
   }catch(e){
     if(!navigator.onLine)throw new Error('오프라인');
-    await fetch(cfg.url,{method:'POST',mode:'no-cors',body,headers:{'Content-Type':'text/plain;charset=utf-8'}});
+    await fetch(cfg.url,{method:'POST',mode:'no-cors',credentials:'omit',body,headers:{'Content-Type':'text/plain;charset=utf-8'}});
     return {ok:true,opaque:true};
   }
   if(!j.ok)throw new Error(j.error==='unauthorized'?'접속 키가 맞지 않아요':j.error);
