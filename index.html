@@ -365,7 +365,9 @@ const ageOf=b=>{if(!b)return '';const t=today().split('-').map(Number),p=b.split
 
 /* ---------- state ---------- */
 const emptyData=()=>({settings:{},logs:[],issues:[],visits:[],labs:[],todos:[],meds:[],briefs:[],sheetUrl:'',ai:null});
+const PRESET={url:'https://script.google.com/macros/s/AKfycbyVji3yeTLmT-z4IyfBnlUjKzhe5YP5ybIyQB1kw-6UbKasuijhV8_AxteZKC4_1Ukw/exec',key:'cat-dq58mm'};
 let cfg = load(LS.cfg,{url:'',key:'',me:'',days:120});
+if(!cfg.url&&PRESET.url){cfg.url=PRESET.url;cfg.key=PRESET.key;}
 let D = Object.assign(emptyData(), load(LS.data,{}));
 let Q = load(LS.queue,[]);
 const ui0 = load(LS.ui,{});
@@ -1280,7 +1282,8 @@ function openOnboard(){
   let h='<div class="sh-head"><span>🐾 덴데·부우 건강기록</span></div>';
   h+='<div class="small muted">처음 한 번만 설정하면 돼요.</div>';
   h+='<div class="fl">누가 쓰는 휴대폰인가요?</div>'+chipGroup('me',s.members||DEFAULTS.members,cfg.me,{cls:'big',add:'members',req:true});
-  h+='<div class="fl">구글 시트 연결 (나중에 해도 돼요)</div><input id="ob_url" value="'+esc(cfg.url)+'" placeholder="웹 앱 URL (https://script.google.com/…/exec)"><input id="ob_key" style="margin-top:8px" value="'+esc(cfg.key)+'" placeholder="접속 키">';
+  h+=PRESET.url?'<input type="hidden" id="ob_url" value="'+esc(cfg.url)+'"><input type="hidden" id="ob_key" value="'+esc(cfg.key)+'"><div class="tiny muted" style="margin-top:10px">구글 시트 연결은 이미 설정돼 있어요. 이름만 고르면 바로 시작해요.</div>'
+    :'<div class="fl">구글 시트 연결 (나중에 해도 돼요)</div><input id="ob_url" value="'+esc(cfg.url)+'" placeholder="웹 앱 URL (https://script.google.com/…/exec)"><input id="ob_key" style="margin-top:8px" value="'+esc(cfg.key)+'" placeholder="접속 키">';
   h+='<div class="sh-foot"><button class="btn pri grow" data-a="obdone">시작하기</button></div>';
   openSheet(h,{photos:[],onSave:()=>{}});
   $('#sheet .sh-bg').dataset.a='';
