@@ -1182,8 +1182,30 @@ function vBrief(){
   }else if(cfg.url)h+='<div class="empty">아직 브리핑이 없어요. 위 버튼으로 만들어 보세요.</div>';
   return h;
 }
+function repairJson(t){
+  t=String(t||'').replace(/```json|```/g,'');
+  const a=t.indexOf('{');if(a<0)return null;
+  const s=t.slice(a);
+  try{return JSON.parse(s.slice(0,s.lastIndexOf('}')+1));}catch(e){}
+  const cuts=[s.length];
+  for(let i=s.length-1,n=0;i>0&&n<400;i--){const c=s[i];if(c===','||c==='}'||c===']'||c==='"'){cuts.push(c===','?i:i+1);n++;}}
+  for(const cut of cuts){
+    let p=s.slice(0,cut).replace(/[\s,]+$/,'');
+    const st=[];let inS=false,esc=false;
+    for(const c of p){
+      if(inS){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inS=false;continue;}
+      if(c==='"')inS=true;else if(c==='{')st.push('}');else if(c==='[')st.push(']');else if(c==='}'||c===']')st.pop();
+    }
+    if(inS)continue;
+    try{return JSON.parse(p+st.reverse().join(''));}catch(e){}
+  }
+  return null;
+}
+function parseBrief(b){let j={};try{j=JSON.parse(b.json||'{}');}catch(e){j={raw:b.json};}
+  if(j.raw){const r=repairJson(j.raw);if(r&&(r.cats||r.report_markdown||r.headline)){r._cut=true;j=r;}}
+  return j;}
 function briefHtml(b){
-  let j={};try{j=JSON.parse(b.json||'{}');}catch(e){j={raw:b.json};}
+  const j=parseBrief(b);
   const li=(arr,cls,todo)=>arr&&arr.length?'<ul class="blist '+(cls||'')+'">'+arr.map(x=>'<li>'+esc(x)+(todo?'<button class="addtodo" data-a="b2todo" data-v="'+esc(x)+'">+할일</button>':'')+'</li>').join('')+'</ul>':'';
   let h='<div class="lvl '+(j.level||b.level||'none')+'"><b>'+fmtKD(b.date)+' · '+(b.kind==='vet'?'병원용 요약':'브리핑')+' · '+(LVL[j.level]||'')+'</b><p>'+esc(j.headline||b.headline)+'</p></div>';
   if(j.report_markdown){
@@ -1205,12 +1227,13 @@ function briefHtml(b){
     if(j.vet_questions&&j.vet_questions.length)h+='<div class="card"><h3>❓ 병원에 물어볼 것</h3>'+li(j.vet_questions,'',true)+'</div>';
     if(j.missing&&j.missing.length)h+='<div class="card"><h3>📝 빠진 기록</h3>'+li(j.missing)+'</div>';
     if(j.raw)h+='<div class="card"><pre style="white-space:pre-wrap;font-size:12px">'+esc(j.raw)+'</pre></div>';
+    if(j._cut)h+='<div class="al watch"><i>✂️</i><span>AI 답변이 길어서 끝부분이 잘렸어요. 위 버튼으로 다시 만들면 전체가 나와요.</span></div>';
   }
   h+='<div class="tiny muted" style="text-align:center;margin:8px 0">'+esc(b.model||'')+' · '+esc((b.updated||b.created||'').slice(0,16))+' · 기록 기반 AI 요약이며 진단이 아니에요</div>';
   return h;
 }
 function briefText(b){
-  let j={};try{j=JSON.parse(b.json||'{}');}catch(e){}
+  const j=parseBrief(b);
   if(j.report_markdown)return '['+b.date+' 가정 관찰 요약]\n'+j.headline+'\n\n'+j.report_markdown.replace(/\*\*/g,'')+(j.vet_questions&&j.vet_questions.length?'\n\n## 보호자 질문\n'+j.vet_questions.map(q=>'- '+q).join('\n'):'');
   return b.date+' 브리핑: '+(j.headline||'');
 }
